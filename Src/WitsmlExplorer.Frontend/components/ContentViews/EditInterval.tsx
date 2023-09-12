@@ -1,10 +1,11 @@
-import { Button, Icon, Label, TextField, Typography } from "@equinor/eds-core-react";
+import { Button, Icon, Label, Typography } from "@equinor/eds-core-react";
 import { useContext, useState } from "react";
 import styled from "styled-components";
 import NavigationContext from "../../contexts/navigationContext";
 import NavigationType from "../../contexts/navigationType";
 import { colors } from "../../styles/Colors";
 import { formatIndexValue } from "../Modals/SelectIndexToDisplayModal";
+import DateTimeCustomPicker from ".././DateTimeCustomPicker";
 
 const EditInterval = (): React.ReactElement => {
   const { dispatchNavigation, navigationState } = useContext(NavigationContext);
@@ -41,24 +42,18 @@ const EditInterval = (): React.ReactElement => {
       </Typography>
       <StartEndIndex>
         <StyledLabel label="Start Index" />
-        <StyledTextField
-          id="startIndex"
-          defaultValue={startIndex}
-          onChange={(e: any) => {
-            setStartIndex(e.target.value);
-            setIsEdited(true);
-          }}
+        <DateTimeCustomPicker
+          datum={startIndex}
+          onRowSelectionChange={(result) => { setStartIndex(result); setIsEdited(true) }}
+          locale="nb"
         />
       </StartEndIndex>
       <StartEndIndex>
         <StyledLabel label="End Index" />
-        <StyledTextField
-          id="endIndex"
-          defaultValue={endIndex}
-          onChange={(e: any) => {
-            setEndIndex(e.target.value);
-            setIsEdited(true);
-          }}
+        <DateTimeCustomPicker
+          datum={endIndex}
+          onRowSelectionChange={(result) => { setEndIndex(result); setIsEdited(true) }}
+          locale="nb"
         />
       </StartEndIndex>
       <StyledButton variant={"ghost"} color={"primary"} onClick={submitEditInterval}>
@@ -82,13 +77,6 @@ const StyledLabel = styled(Label)`
   width: 5rem;
   align-items: center;
   font-style: italic;
-`;
-
-const StyledTextField = styled(TextField)`
-  div {
-    background-color: transparent;
-  }
-  min-width: 220px;
 `;
 
 const StyledButton = styled(Button)`
