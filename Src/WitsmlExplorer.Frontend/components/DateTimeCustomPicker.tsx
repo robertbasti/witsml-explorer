@@ -19,13 +19,13 @@ const DateTimeCustomPicker = (props: DateTimeCustomPickerProps): React.ReactElem
   const [selectedTimeSections, setSelectedTimeSections] = React.useState<FieldSelectedSections>(null);
   const inputRefTime = React.useRef<HTMLInputElement>(null);
 
-  const OnKeyDown = (event: React.KeyboardEvent<HTMLDivElement>, selectedSections: FieldSelectedSections, setSelectedSections : SetSelectedSectionsFunction ) => {
+  const OnKeyDown = (event: React.KeyboardEvent<HTMLDivElement>, selectedSections: FieldSelectedSections, setSelectedSections: SetSelectedSectionsFunction) => {
     if (event.key === "Tab") {
       if (!event.shiftKey) {
         if (selectedSections === null) {
           event.preventDefault();
           setSelectedSections(0);
-        } else if (selectedSections as number < 2){          
+        } else if ((selectedSections as number) < 2) {
           event.preventDefault();
           setSelectedSections((selectedSections as number) + 1);
         }
@@ -37,21 +37,18 @@ const DateTimeCustomPicker = (props: DateTimeCustomPickerProps): React.ReactElem
         }
       }
     }
-  }
+  };
 
-  const OnKeyUp =  (event: React.KeyboardEvent<HTMLDivElement>, selectedSections: FieldSelectedSections, setSelectedSections : SetSelectedSectionsFunction ) => {
+  const OnKeyUp = (event: React.KeyboardEvent<HTMLDivElement>, selectedSections: FieldSelectedSections, setSelectedSections: SetSelectedSectionsFunction) => {
     if (event.key === "Tab" && selectedSections === "all") {
-      
-      if (!event.shiftKey) { 
-        event.preventDefault();                  
-        setSelectedSections(0);                  
-      }
-      else {
-        event.preventDefault();
+      event.preventDefault();
+      if (!event.shiftKey) {
+        setSelectedSections(0);
+      } else {
         setSelectedSections(2);
-        }
       }
-  }
+    }
+  };
 
   return (
     <LocalizationProvider dateAdapter={AdapterLuxon} adapterLocale={props.locale}>
@@ -69,7 +66,7 @@ const DateTimeCustomPicker = (props: DateTimeCustomPickerProps): React.ReactElem
           textField: {
             size: "small",
             onKeyDown: (event) => OnKeyDown(event, selectedDateSections, setSelectedDateSections),
-            onKeyUp: (event) => OnKeyUp(event, selectedDateSections, setSelectedDateSections),
+            onKeyUp: (event) => OnKeyUp(event, selectedDateSections, setSelectedDateSections)
           }
         }}
       />
@@ -89,7 +86,7 @@ const DateTimeCustomPicker = (props: DateTimeCustomPickerProps): React.ReactElem
           textField: {
             size: "small",
             onKeyDown: (event) => OnKeyDown(event, selectedTimeSections, setSelectedTimeSections),
-            onKeyUp: (event) => OnKeyUp(event, selectedTimeSections, setSelectedTimeSections),
+            onKeyUp: (event) => OnKeyUp(event, selectedTimeSections, setSelectedTimeSections)
           }
         }}
       />

@@ -44,7 +44,10 @@ const EditInterval = (): React.ReactElement => {
         <StyledLabel label="Start Index" />
         <DateTimeCustomPicker
           datum={startIndex}
-          onRowSelectionChange={(result) => { setStartIndex(result); setIsEdited(true) }}
+          onRowSelectionChange={(result) => {
+            setStartIndex(result);
+            setIsEdited(true);
+          }}
           locale="nb"
         />
       </StartEndIndex>
@@ -52,7 +55,10 @@ const EditInterval = (): React.ReactElement => {
         <StyledLabel label="End Index" />
         <DateTimeCustomPicker
           datum={endIndex}
-          onRowSelectionChange={(result) => { setEndIndex(result); setIsEdited(true) }}
+          onRowSelectionChange={(result) => {
+            setEndIndex(result);
+            setIsEdited(true);
+          }}
           locale="nb"
         />
       </StartEndIndex>
