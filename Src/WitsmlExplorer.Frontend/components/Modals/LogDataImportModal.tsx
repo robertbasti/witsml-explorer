@@ -1,13 +1,21 @@
-﻿import { Accordion, Icon, List } from "@equinor/eds-core-react";
+﻿﻿﻿import { Accordion, Icon, List } from "@equinor/eds-core-react";
 import { Button, Tooltip, Typography } from "@mui/material";
 import { WITSML_INDEX_TYPE_MD } from "components/Constants";
+import {
+  ContentTable,
+  ContentTableColumn,
+  ContentTableRow,
+  ContentType
+} from "components/ContentViews/table";
 import { StyledAccordionHeader } from "components/Modals/LogComparisonModal";
-import ModalDialog from "components/Modals/ModalDialog";
+import ModalDialog, { ModalWidth } from "components/Modals/ModalDialog";
 import WarningBar from "components/WarningBar";
 import { useConnectedServer } from "contexts/connectedServerContext";
 import OperationType from "contexts/operationType";
+import { parse } from "date-fns";
 import { useGetComponents } from "hooks/query/useGetComponents";
 import { useOperationState } from "hooks/useOperationState";
+import { first } from "lodash";
 import { ComponentType } from "models/componentType";
 import { IndexRange } from "models/jobs/deleteLogCurveValuesJob";
 import ImportLogDataJob from "models/jobs/importLogDataJob";
@@ -15,9 +23,15 @@ import ObjectReference from "models/jobs/objectReference";
 import LogCurveInfo from "models/logCurveInfo";
 import LogObject from "models/logObject";
 import { toObjectReference } from "models/objectOnWellbore";
-import React, { useCallback, useState } from "react";
+import { array } from "prop-types";
+import React, { useCallback, useMemo, useState } from "react";
 import JobService, { JobType } from "services/jobService";
 import styled from "styled-components";
+import {
+  extractLASSection,
+  parseLASData,
+  parseLASHeader
+} from "tools/lasFileTools";
 
 export interface LogDataImportModalProps {
   targetLog: LogObject;
@@ -26,6 +40,10 @@ interface ImportColumn {
   index: number;
   name: string;
   unit: string;
+}
+
+interface ContentTableCustomRow extends ContentTableRow {
+  [key: string]: any;
 }
 
 const IMPORT_FORMAT_INVALID =
@@ -96,19 +114,50 @@ const LogDataImportModal = (
     async (e: React.ChangeEvent<HTMLInputElement>): Promise<void> => {
       const file = e.target.files.item(0);
       if (!file) return;
-
       const text = await file.text();
-      const header = text.split("\n", 1)[0];
-      const data = text.split("\n").slice(1);
 
+      let header: ImportColumn[] = null;
+      let data: string[] = null;
+
+      if (text.startsWith("~V")) {
+        // LAS files should start with ~V.
+        const curveSection = extractLASSection(
+          text,
+          "CURVE INFORMATION",
+          "Curve"
+        );
+        const dataSection = extractLASSection(text, "ASCII", "A");
+        header = parseLASHeader(curveSection);
+        data = parseLASData(dataSection);
+      } else {
+        const headerLine = text.split("\n", 1)[0];
+        header = parseCSVHeader(headerLine);
+        data = text.split("\n").slice(1);
+      }
+
+      const indexCurve = targetLog.indexCurve;
+      const selectedColumn = header.find(x => x.name.toUpperCase() === indexCurve.toUpperCase()).index;
+     
+    var  datab = convertToDateTime(data, selectedColumn)
+      const validateDateTimeColumn = parseDateTimeColumn(data, selectedColumn);
+
+      var datac = swapFirsColumn(datab,selectedColumn);
+     
+  const firstColumn = header[selectedColumn];
+  header[selectedColumn] = header[0];
+ header[0] = firstColumn;
+  validate(header);
+  
+ // console.log(header)
+ // console.log(datac)
       setUploadedFile(file);
-      updateUploadedFileColumns(header);
-      setUploadedFileData(data);
+      setUploadedFileColumns(header);
+      setUploadedFileData(datac);
     },
     []
   );
 
-  const updateUploadedFileColumns = (header: string): void => {
+  const parseCSVHeader = (header: string) => {
     const unitRegex = /(?<=\[)(.*)(?=\]){1}/;
     const fileColumns = header.split(separator).map((col, index) => {
       const columnName = col.substring(0, col.indexOf("["));
@@ -118,9 +167,75 @@ const LogDataImportModal = (
         unit: unitRegex.exec(col) ? unitRegex.exec(col)[0] : UNITLESS_UNIT
       };
     });
-    setUploadedFileColumns(fileColumns);
-    validate(fileColumns);
+    return fileColumns;
   };
+
+  const contentTableColumns: ContentTableColumn[] = useMemo(
+    () =>
+      uploadedFileColumns.map((col) => ({
+        property: col.name,
+        label: `${col.name}[${col.unit}]`,
+        type: ContentType.String
+      })),
+    [uploadedFileColumns]
+  );
+  
+
+  const parseDateTimeColumn = (data: string[], selectedColumn: number) => {
+    const curveData = data
+    .map((obj) => obj.split(",")[selectedColumn]);
+    const validate = curveData.map((data) => parsingDateTime(data))
+    return validate.every((element) => element === true);
+  };
+
+  const convertToDateTime = (data: string[], selectedColumn: number) => {
+    const curveData = data
+    .map((obj) => obj.split(","));
+   
+    const parsedDate = curveData.map((datax) => parsingDateTime2(datax[selectedColumn]).toString())
+    
+    
+    curveData[selectedColumn] = parsedDate;
+    console.log(curveData)
+    const result = curveData
+    .map((obj) => obj.join(","));
+    
+    return result;
+  };
+
+  const swapFirsColumn = (data: string[], selectedColumn: number) => {
+    const splitData =data
+    .map((obj) => obj.split(","));   
+    const tempData = swapColumns(splitData, 0, selectedColumn);
+   
+    const result = tempData
+    .map((obj) => obj.join(","));
+    return result;
+  };
+
+  function swapColumns(matrix: string[][], col1: number, col2: number): string[][] {
+    for (const row of matrix) {
+        [row[col1], row[col2]] = [row[col2], row[col1]];
+    }
+    return matrix;
+}
+
+  const parsingDateTime =  (dateString: string) => {
+    if (isNaN(Date.parse(dateString))) 
+    {
+      return parse(dateString, "HH:m:ss/dd-MMM-yyyy", new Date()).toString() === "Invalid Date" ? false : true;
+    } else
+    return true
+  }; 
+
+  const parsingDateTime2 =  (dateString: string) => {
+    
+      var d = parse(dateString, "HH:m:ss/dd-MMM-yyyy", new Date());
+      
+      const datering = d.toISOString();
+     
+      return datering;
+  }; 
 
   return (
     <>
@@ -139,7 +254,7 @@ const LogDataImportModal = (
                   <Typography noWrap>Upload File</Typography>
                   <input
                     type="file"
-                    accept=".csv,text/csv"
+                    accept=".csv,text/csv,.las,.txt"
                     hidden
                     onChange={handleFileChange}
                   />
@@ -159,6 +274,7 @@ const LogDataImportModal = (
                     style={{ backgroundColor: colors.ui.backgroundLight }}
                   >
                     <List>
+                      <List.Item>Supported filetypes: csv, las.</List.Item>
                       <List.Item>
                         Currently, only double values are supported as
                         TypeLogData.
@@ -175,15 +291,64 @@ const LogDataImportModal = (
                           </List.Item>
                         </List>
                       </List.Item>
+                      <List.Item>
+                        The las is expected to have these sections:
+                        <List>
+                          <List.Item>
+                            ~CURVE INFORMATION
+                            <br />
+                            [...]
+                            <br />
+                            IndexCurve .unit [...]
+                            <br />
+                            Curve1 .unit [...]
+                            <br />
+                            [...]
+                            <br />
+                            ~A (or ~ASCII)
+                            <br />
+                            195.99 -999.25 2500
+                            <br />
+                            196.00 1 2501
+                          </List.Item>
+                        </List>
+                      </List.Item>
                     </List>
                   </Accordion.Panel>
                 </Accordion.Item>
+                {uploadedFileColumns?.length &&
+                  uploadedFileData?.length &&
+                  targetLog?.indexCurve &&
+                  !error && (
+                    <Accordion.Item>
+                      <StyledAccordionHeader colors={colors}>
+                        Preview
+                      </StyledAccordionHeader>
+                      <Accordion.Panel
+                        style={{
+                          backgroundColor: colors.ui.backgroundLight,
+                          padding: 0
+                        }}
+                      >
+                        <ContentTable
+                          showPanel={false}
+                          columns={contentTableColumns}
+                          data={getTableData(
+                            uploadedFileData,
+                            uploadedFileColumns,
+                            targetLog.indexCurve
+                          )}
+                        />
+                      </Accordion.Panel>
+                    </Accordion.Item>
+                  )}
               </Accordion>
               {hasOverlap && (
                 <WarningBar message="The import data overlaps existing data. Any overlap will be overwritten!" />
               )}
             </Container>
           }
+          width={ModalWidth.LARGE}
           confirmDisabled={!uploadedFile || !!error || isFetchingLogCurveInfo}
           confirmText={"Import"}
           onSubmit={() => onSubmit()}
@@ -302,6 +467,25 @@ const getDataRanges = (
   }
 
   return dataRanges;
+};
+
+const getTableData = (
+  data: string[],
+  columns: ImportColumn[],
+  indexCurve: string
+): ContentTableCustomRow[] => {
+  const indexCurveColumn = columns.find((col) => col.name === indexCurve);
+  if (!indexCurveColumn) return [];
+  return data?.map((dataLine) => {
+    const dataCells = dataLine.split(",");
+    const result: ContentTableCustomRow = {
+      id: dataCells[indexCurveColumn.index]
+    };
+    columns.forEach((col, i) => {
+      result[col.name] = dataCells[i];
+    });
+    return result;
+  });
 };
 
 export default LogDataImportModal;
