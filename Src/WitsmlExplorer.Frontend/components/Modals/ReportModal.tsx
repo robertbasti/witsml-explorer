@@ -207,11 +207,12 @@ export const ReportModal = (props: ReportModal): React.ReactElement => {
 export const useGetReportOnJobFinished = (jobId: string): BaseReport => {
   const { connectedServer } = useConnectedServer();
   const [report, setReport] = useState<BaseReport>(null);
-  const { exportData } = useExport();
+  const { exportData, exportOptions } = useExport();
 
   if (!jobId) return null;
 
   useEffect(() => {
+    
     const unsubscribeOnJobFinished =
       NotificationService.Instance.snackbarDispatcherAsEvent.subscribe(
         async (notification) => {
@@ -225,6 +226,9 @@ export const useGetReportOnJobFinished = (jobId: string): BaseReport => {
               );
             } else {
               setReport(report);
+              if (report.fileExtension !== null) {
+                exportOptions.fileExtension = report.fileExtension;
+              }
               if (report.downloadImmediately === true) {
                 exportData(
                   report.title,

@@ -12,5 +12,6 @@ namespace WitsmlExplorer.Api.Models.Reports
         public string ReportHeader { get; init; }
         public string JobDetails { get; init; }
         public string ReportBody { get; init; }
+        public string FileExtension { get; init; }
     }
 }

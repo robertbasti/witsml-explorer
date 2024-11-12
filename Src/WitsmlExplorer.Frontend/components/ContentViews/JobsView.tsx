@@ -49,7 +49,7 @@ export const JobsView = (): React.ReactElement => {
     ? new Date(dataUpdatedAt).toLocaleTimeString()
     : "";
 
-  const { exportData } = useExport();
+  const { exportData, exportOptions } = useExport();
 
   const [cancellingJobs, setCancellingJobs] = useState<string[]>([]);
 
@@ -94,6 +94,9 @@ export const JobsView = (): React.ReactElement => {
   };
   const onClickReport = async (jobId: string) => {
     const report = await JobService.getReport(jobId);
+    if (report.fileExtension !== null) {
+      exportOptions.fileExtension = report.fileExtension
+    }
     if (report.downloadImmediately === true) {
       exportData(report.title, report.reportHeader, report.reportBody);
     } else {
